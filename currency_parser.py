@@ -12,10 +12,10 @@ CURRENCY_INDEX = {
 	("sell", "rub"):5
 }
 
-page_html = requests.get("https://myfin.by/currency/minsk").text
-soup_page = BeautifulSoup(page_html, 'html.parser')
+page_html = requests.get("https://myfin.by/currency/minsk").text 
+SOUP_PAGE = BeautifulSoup(page_html, 'html.parser')
 with open("bank_locations.json", "r") as b:
-	bank_locations= json.load(b)
+	BANK_LOCATIONS= json.load(b)
 
 
 def within_km(user_location, bank_location):
@@ -39,7 +39,7 @@ def course_info(bank, operation, curr):
 	return [title, phone, address, course]
 
 
-def stringify_response(curr_list):
+def stringify_response(curr_list, operation):
 	response = sorted(curr_list, key=lambda x: x[3])
 	if operation == "buy":
 		response.reverse()
@@ -50,9 +50,8 @@ def stringify_response(curr_list):
 
 
 def currency_response(user_location, operation, curr):
-	closest_banks = [ad for ad, loc in bank_locations.items() if within_km(user_location, location)]
-	banks = soup_page.select("tr.currency_row_1")
+	closest_banks = [ad for ad, loc in BANK_LOCATIONS.items() if within_km(user_location, BANK_LOCATIONS[ad])]
+	banks = SOUP_PAGE.select("tr.currency_row_1")
 	unsorted_curr_list = [course_info(b, operation, curr) for b in banks if b.select("div.address")[0].getText() in closest_banks]
-	response = stringify_response(unsorted_curr_list)
+	response = stringify_response(unsorted_curr_list, operation)
 	return response
-	
