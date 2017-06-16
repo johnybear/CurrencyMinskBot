@@ -18,19 +18,10 @@ with open("bank_locations.json", "r") as b:
 	bank_locations= json.load(b)
 
 
-def closest_banks(user_location):
-	banks = []
-	user_location = user_location.split(", ")
-	for address, location in bank_locations.items():
-		if within_km(user_location, location):
-			banks.append(address)
-	return banks
-
-
 def within_km(user_location, bank_location):
-	bank_location = [float(i) for i in bank_location]
-	user_location = [float(i) for i in user_location]
-	lon1, lat1, lon2, lat2 = map(radians, [bank_location[1], bank_location[0], user_location[1], user_location[0]])
+	b_lat, b_long = tuple(map(float, bank_location))
+	u_lat, u_long = user_location.latitude, user_location.longitude
+	lon1, lat1, lon2, lat2 = map(radians, [b_long, b_lat, u_long, u_lat])
 	# haversine formula 
 	dlon = lon2 - lon1 
 	dlat = lat2 - lat1 
@@ -39,27 +30,29 @@ def within_km(user_location, bank_location):
 	km = 6367 * c
 	return km <= 1
 
-
-
 def course_info(bank, operation, curr):
 	c_index = CURRENCY_INDEX[(operation, curr)]
 	title = bank.select("div.ttl > a")[0].getText()
 	phone = bank.select("div.tel")[0].getText()
 	address = bank.select("div.address")[0].getText()
-	course = bank.select("td > span.first_curr")[c_index].getText()
-	return "\n".join([title, phone, address, course])
+	course = "курс обмена: " + bank.select("td > span.first_curr")[c_index].getText()
+	return [title, phone, address, course]
+
+
+def stringify_response(curr_list):
+	response = sorted(curr_list, key=lambda x: x[3])
+	if operation == "buy":
+		response.reverse()
+	response = map("\n".join, response)
+	response = map(lambda x: x.strip(), response)#remove empty values from each elem
+	response = ("\n"+(("*")*26)+"\n").join(response)
+	return response
 
 
 def currency_response(user_location, operation, curr):
-	closest_b = closest_banks(user_location)
+	closest_banks = [ad for ad, loc in bank_locations.items() if within_km(user_location, location)]
 	banks = soup_page.select("tr.currency_row_1")
-	response = [course_info(b, operation, curr) for b in banks if b.select("div.address")[0].getText() in closest_b]
+	unsorted_curr_list = [course_info(b, operation, curr) for b in banks if b.select("div.address")[0].getText() in closest_banks]
+	response = stringify_response(unsorted_curr_list)
 	return response
 	
-
-
-user_location = input("Координаты юзера: ")
-curr = input("Валюта: ")
-operation = input("Тип операции: ")
-
-print(("\n"+(("*")*26)+"\n").join(currency_response(user_location, operation, curr)))
